@@ -1,201 +1,103 @@
 const http = require("http");
 const fs = require("fs");
-const signup = require("./node-api/signup");
-const login = require("./node-api/login");
-const verifyToken = require("./node-api/verifyToken");
-const sendmail = require("./node-api/sendmail");
+const signup = require("./api/signup");
+const login = require("./api/login");
+const verifyToken = require("./api/verifyToken");
+const sendmail = require("./api/sendmail");
 
-const route = (path,response,status_code,type)=>{
-  fs.readFile(path,(error,data)=>{
-    if(data)
-    {
-      response.writeHead(status_code,{
-        'Content-Type': type
-      });
-      response.write(data);
-      return response.end();
-    }
-    else{
-      response.writeHead(404,{
-        'Content-Type': "text/html"
-      });
-      response.write("file not found");
-      return response.end();
+// Function to serve files
+const serveFile = (path, response, statusCode, type) => {
+  fs.readFile(path, (error, data) => {
+    if (error) {
+      response.writeHead(404, { 'Content-Type': "text/html" });
+      response.write("File not found");
+      response.end();
+    } else {
+      response.writeHead(statusCode, { 'Content-Type': type });
+      response.end(data);
     }
   });
-}
+};
 
-const server = http.createServer((request,response)=>{
+const route = (request, response) => {
+  const { url, method } = request;
 
-  // html page routing
-  if(request.url == "/" || request.url == "/home" || request.url == "/homepage")
-  {
-    let type = "text/html";
-    let status_code = 200;
-    let path = "html/homepage.html";
-    route(path,response,status_code,type);
-  }
-  else if(request.url == "/about" || request.url == "/about-us")
-  {
-    let type = "text/html";
-    let status_code = 200;
-    let path = "html/about-us.html";
-    route(path,response,status_code,type);
-  }
-  else if(request.url == "/contact" || request.url == "/contact-us")
-  {
-    let type = "text/html";
-    let status_code = 200;
-    let path = "html/contact-us.html";
-    route(path,response,status_code,type);
+  // HTML page routing
+  const htmlRoutes = {
+    "/": "public/html/homepage.html",
+    "/home": "public/html/homepage.html",
+    "/homepage": "public/html/homepage.html",
+    "/about": "public/html/about-us.html",
+    "/about-us": "public/html/about-us.html",
+    "/contact": "public/html/contact-us.html",
+    "/contact-us": "public/html/contact-us.html"
+  };
+
+  if (htmlRoutes[url]) {
+    return serveFile(htmlRoutes[url], response, 200, "text/html");
   }
 
-
-  // css page routing
-  else if(request.url  == "/css/homepage.css")
-  {
-    let type = "text/css";
-    let status_code = 200;
-    let path = "css/homepage.css";
-    route(path,response,status_code,type);
+  // CSS routing
+  const cssRoutes = [
+    "/public/css/homepage.css",
+    "/public/css/contact-us.css",
+    "/public/css/about-us.css",
+    "/public/css/not-found.css",
+    "/public/css/profile.css"
+  ];
+  
+  if (cssRoutes.includes(url)) {
+    return serveFile(url.slice(1), response, 200, "text/css");
   }
 
-  else if(request.url  == "/css/contact-us.css")
-  {
-    let type = "text/css";
-    let status_code = 200;
-    let path = "css/contact-us.css";
-    route(path,response,status_code,type);
+  // JS routing
+  const jsRoutes = [
+    "/public/js/homepage.js",
+    "/public/js/about-us.js",
+    "/public/js/contact-us.js",
+    "/public/js/not-found.js",
+    "/public/js/profile.js"
+  ];
+
+  if (jsRoutes.includes(url)) {
+    return serveFile(url.slice(1), response, 200, "text/javascript");
   }
 
-  else if(request.url  == "/css/about-us.css")
-  {
-    let type = "text/css";
-    let status_code = 200;
-    let path = "css/about-us.css";
-    route(path,response,status_code,type);
+  // API routing
+  const apiRoutes = {
+    "/api/signup": signup.result,
+    "/api/login": login.result,
+    "/api/verifyToken": verifyToken.result,
+    "/api/sendmail": sendmail.result
+  };
+
+  if (apiRoutes[url] && method === "POST") {
+    return apiRoutes[url](request, response);
   }
 
-  else if(request.url  == "/css/not-found.css")
-  {
-    let type = "text/css";
-    let status_code = 200;
-    let path = "css/not-found.css";
-    route(path,response,status_code,type);
+  // Authenticated routes
+  const regExp = {
+    profile: /\/profile\?token=/,
+    images: /\/assets\/images\//,
+    videos: /\/assets\/videos\//
+  };
+
+  if (regExp.profile.test(url)) {
+    return serveFile("public/html/profile.html", response, 200, "text/html");
+  } else if (regExp.images.test(url)) {
+    return serveFile(url.slice(1), response, 200, "image/jpeg");
+  } else if (regExp.videos.test(url)) {
+    return serveFile(url.slice(1), response, 200, "video/mp4");
   }
 
-  else if(request.url  == "/css/profile.css")
-  {
-    let type = "text/css";
-    let status_code = 200;
-    let path = "css/profile.css";
-    route(path,response,status_code,type);
-  }
+  // Not found page
+  serveFile("public/html/not-found.html", response, 404, "text/html");
+};
 
-  // javascript page routing
-  else if(request.url  == "/js/homepage.js")
-  {
-    let type = "text/javascript";
-    let status_code = 200;
-    let path = "js/homepage.js";
-    route(path,response,status_code,type);
-  }
-
-  else if(request.url  == "/js/about-us.js")
-  {
-    let type = "text/javascript";
-    let status_code = 200;
-    let path = "js/about-us.js";
-    route(path,response,status_code,type);
-  }
-
-  else if(request.url  == "/js/contact-us.js")
-  {
-    let type = "text/javascript";
-    let status_code = 200;
-    let path = "js/contact-us.js";
-    route(path,response,status_code,type);
-  }
-
-  else if(request.url  == "/js/not-found.js")
-  {
-    let type = "text/javascript";
-    let status_code = 200;
-    let path = "js/not-found.js";
-    route(path,response,status_code,type);
-  }
-
-  else if(request.url  == "/js/profile.js")
-  {
-    let type = "text/javascript";
-    let status_code = 200;
-    let path = "js/profile.js";
-    route(path,response,status_code,type);
-  }
-
-  // nodeapis routing
-  else if(request.url  == "/api/signup" && request.method == "POST")
-  {
-    signup.result(request,response);
-  }
-
-  else if(request.url  == "/api/login" && request.method == "POST")
-  {
-    login.result(request,response);
-  }
-
-  else if(request.url  == "/api/verifyToken" && request.method == "POST")
-  {
-    verifyToken.result(request,response);
-  }
-
-  else if(request.url  == "/api/sendmail" && request.method == "POST")
-  {
-    sendmail.result(request,response);
-  }
-
-  else{
-      // authenticated route
-      const regExp = {
-        profile: /\/profile\?token=/,
-        images: /\/assets\/images\//,
-        videos: /\/assets\/videos\//
-      }
-
-      if(regExp.profile.test(request.url))
-      {
-        let type = "text/html";
-        let status_code = 200;
-        let path = "html/profile.html";
-        route(path,response,status_code,type);
-      }
-
-      else if(regExp.images.test(request.url))
-      {
-
-        let type = "image/jpeg";
-        let status_code = 200;
-        let path = request.url.slice(1)
-        route(path,response,status_code,type);
-      }
-
-      else if(regExp.videos.test(request.url))
-      {
-
-        let type = "video/mp4";
-        let status_code = 200;
-        let path = request.url.slice(1)
-        route(path,response,status_code,type);
-      }
-
-      else{
-        let type = "text/html";
-        let status_code = 404;
-        let path = "html/not-found.html";
-        route(path,response,status_code,type);
-      }
-  }
-
+const server = http.createServer((request, response) => {
+  route(request, response);
 });
 
-server.listen(8080);
+server.listen(8080, () => {
+  console.log("Server is running on http://localhost:8080");
+});

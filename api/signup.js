@@ -1,5 +1,5 @@
 const database = require("./db");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 
 exports.result = (request,response)=>{
   let formdata = "";

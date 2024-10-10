@@ -1,92 +1,86 @@
 const crypto = require("crypto");
 const database = require("./db");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-exports.result = (request,response)=>{
+exports.result = async (request, response) => {
   let formdata = "";
 
   // get full url
-  const fullUrl = request.headers.referer+request.url.slice(1);
+  const fullUrl = request.headers.referer + request.url.slice(1);
 
-  request.on("data",(chunks)=>{
+  request.on("data", (chunks) => {
     formdata += chunks.toString();
   });
 
-  request.on("end",()=>{
-    const user = JSON.parse(formdata);
-    const query = {
-      email: user.username
-    }
+  request.on("end", async () => {
+    try {
+      const user = JSON.parse(formdata);
+      const query = {
+        email: user.username,
+      };
 
-    const findRes = database.find(query,"users");
-    findRes.then((successRes)=>{
+      const successRes = await database.find(query, "users");
       const userInfo = successRes;
       const realPassword = userInfo.data[0].password;
 
       // match encrypted password
-      bcrypt.compare(user.password,realPassword)
-      .then((isMatched)=>{
-        if(isMatched)
-        {
-          // login success generate secrets and create token
-          const secret = crypto.randomBytes(16).toString('hex');
+      const isMatched = await bcrypt.compare(user.password, realPassword);
+      if (isMatched) {
+        // login success generate secrets and create token
+        const secret = crypto.randomBytes(16).toString("hex");
 
-          const insertRes =  database.insertOne({
+        const insertRes = await database.insertOne(
+          {
             secret: secret,
             created_at: new Date(),
-            isVerified: false
-          },"jwt_secrets");
+            isVerified: false,
+          },
+          "jwt_secrets"
+        );
 
-          insertRes.then((successRes)=>{
-            const secret_id = successRes.data.insertedId;
+        const secret_id = insertRes.data.insertedId;
 
-            const token = jwt.sign({
-              iss: fullUrl,
-              data: userInfo.data[0]
-            },secret,{expiresIn: 86400});
+        const token = jwt.sign(
+          {
+            iss: fullUrl,
+            data: userInfo.data[0],
+          },
+          secret,
+          { expiresIn: 86400 }
+        );
 
-            const message = JSON.stringify({
-              isLoged: true,
-              message: "User authenticated !",
-              token : token,
-              secretId: secret_id
-            });
+        const message = JSON.stringify({
+          isLoged: true,
+          message: "User authenticated!",
+          token: token,
+          secretId: secret_id,
+        });
 
-            sendResponse(response,200,message);
-          })
-          .catch((errorRes)=>{
-            console.log(errorRes);
-          });
-
-
-        }
-        else{
-          // login failed
-          const message = JSON.stringify({
-            isLoged: false,
-            message: "Authentication failed !"
-          });
-          sendResponse(response,401,message);
-        }
-      });
-    })
-    .catch((errorRes)=>{
+        sendResponse(response, 200, message);
+      } else {
+        // login failed
+        const message = JSON.stringify({
+          isLoged: false,
+          message: "Authentication failed!",
+        });
+        sendResponse(response, 401, message);
+      }
+    } catch (error) {
+      // Handle errors (user not found or JSON parsing error)
       const message = JSON.stringify({
         isLoged: false,
-        message: "User not found !"
+        message: error.message || "User not found!",
       });
-      sendResponse(response,404,message);
-    });
-
+      sendResponse(response, 404, message);
+    }
   });
+};
 
-  const sendResponse = (response,status_code,message)=>{
-      response.writeHead(status_code,{
-        'Content-Type': 'application/json'
-      });
-      response.write(message);
-      return response.end();
-  }
-
-}
+const sendResponse = (response, status_code, message) => {
+  response.writeHead(status_code, {
+    "Content-Type": "application/json",
+  });
+  response.write(message);
+  return response.end();
+};

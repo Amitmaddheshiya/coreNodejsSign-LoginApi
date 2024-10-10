@@ -19,7 +19,7 @@ exports.result = (request,response)=>{
         const secret = successRes.data[0].secret;
 
         // verify the token
-        const token = jwt.verify(post.token,secret,(error,success)=>{
+        jwt.verify(post.token,secret,(error,success)=>{
           if(success)
           {
             if(post.verify)

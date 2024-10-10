@@ -26,10 +26,9 @@ exports.find = (query,collection_name)=>{
             });
         }
         else{
-            reject({
-              status_code: 404,
-              message: "Data not found !"
-            })
+          const error = new Error("Data not found !");
+          error.status_code = 404;
+          reject(error);
         }
       });
     });
@@ -52,10 +51,9 @@ exports.findById = (id,collection_name)=>{
             });
         }
         else{
-            reject({
-              status_code: 404,
-              message: "Data not found !"
-            })
+          const error = new Error("Data not found !");
+          error.status_code = 404;
+          reject(error); 
         }
       });
     });
@@ -71,10 +69,9 @@ exports.insertOne = (formdata,collection_name)=>{
       db.collection(collection_name).insertOne(formdata,(error,dataRes)=>{
         if(error)
         {
-          reject({
-            status_code: 500,
-            message: "Internal server error !"
-          });
+          const error = new Error("Data not found !");
+error.status_code = 404;
+reject(error);
         }
         else{
           resolve({
@@ -95,10 +92,9 @@ exports.updateById = (id,formdata,collection_name)=>{
       db.collection(collection_name).updateOne({"_id":ObjectId(id)},formdata,(error,dataRes)=>{
         if(error)
         {
-          reject({
-            status_code: 500,
-            message: "Internal server error !"
-          });
+          const error = new Error("Data not found !");
+error.status_code = 404;
+reject(error);
         }
         else{
           resolve({
